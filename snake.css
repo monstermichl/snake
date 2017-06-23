@@ -1,0 +1,59 @@
+html {
+    height  : 100%;
+    width   : 100%;
+    margin  : 0;
+    padding : 0;
+}
+
+body {
+    height           : 100%;
+    width            : 100%;
+    margin           : 0;
+    padding          : 0;
+    background-color : #ededed;
+}
+
+#maincontainer {
+    height   : 55%;
+    width    : 55%;
+    margin   : auto;
+    position : relative;
+    top      : 20%;
+}
+
+#snakecontainer {
+    height : 100%;
+    width  : 100%;
+}
+
+#snakescore {
+    margin-top  : 1%;
+    margin-left : 1%;
+    font-family : monospace;
+    font-size   : 1.1em;
+    color       : #5e5e5e;
+}
+
+.tile {
+    background-color : #efefef;
+}
+
+.snakepart {
+    background-color : #08a6ce;
+}
+
+.brick {
+    background-color : #5e5e5e;
+}
+
+.apple {
+    background-color: #009cb7;
+}
+
+.banana {
+    background-color: #009cb7;
+}
+
+.pear {
+    background-color: #009cb7;
+}

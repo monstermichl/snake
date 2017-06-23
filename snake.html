@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+    <head>
+        <title>snake</title>
+        <link rel="stylesheet" href="snake.css" />
+        <script src="snake.js"></script>
+        <script type="text/javascript">
+            snake = null;
+            
+            function init()
+            {
+                snake          = new snake_container('snakecontainer', 50, 50, 5, 75, scoreUpdate);
+                main_container = document.getElementById('maincontainer');
+                
+                window.onkeydown = keydown;
+                scoreUpdate(0);
+                
+                if (snake !== null)
+                {
+                    if (main_container !== null) /* update maincontainer size to fit snakecontainer */
+                    {
+                        main_container.style.height = snake.getHeight() + 'px';
+                        main_container.style.width  = snake.getWidth()  + 'px';
+                    }
+                    snake.start();
+                }
+            }
+            
+            function scoreUpdate(score)
+            {
+                score_display = document.getElementById('snakescore');
+                
+                if (score_display !== null) {
+                    score_display.innerHTML = 'Score: ' + score;
+                }
+            }
+            
+            /* ------------------------------------------------------------------
+             * keydown handling is excluded from snake.js to give the possiblity
+             * to control the snake in another way (e.g. via mouse)
+             * ------------------------------------------------------------------ */
+            function keydown(event)
+            {
+                if (snake !== null)
+                {
+                    switch(event.keyCode)
+                    {
+                        case 38: snake.moveUp()   ; break; /* key up */
+                        case 40: snake.moveDown() ; break; /* key down */
+                        case 37: snake.moveLeft() ; break; /* key left */
+                        case 39: snake.moveRight(); break; /* key right */
+                    }
+                }
+            }
+        </script>
+    </head>
+    <body onload="init();">
+        <div id="maincontainer">
+            <div id="snakecontainer">
+
+            </div>
+            <div id="snakescore"></div>
+        </div>
+    </body>
+</html>
