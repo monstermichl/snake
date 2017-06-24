@@ -73,7 +73,20 @@ function snake_bodyPart(size, x, y)
    snake_bodyPart.prototype = Object.create(snake_tile.prototype);
    snake_bodyPart.prototype.constructor = snake_bodyPart;
  
-   this._direction = SNAKE_DIRECTIONS.NONE;
+   MOVE_WIDTH = 1;
+   this._direction  = SNAKE_DIRECTIONS.NONE;
+   
+   this._lookAhead = function(look_at_x, look_at_y)
+   {
+      if ((look_at_x === undefined) || (look_at_x === null)) {
+         look_at_x = this.getX();
+      }
+      
+      if ((look_at_y === undefined) || (look_at_y === null)) {
+         look_at_y = this.getY();
+      }
+      return { x : look_at_x, y : look_at_y };
+   };
    
    this.getDirection = function() {
       return this._direction;
@@ -107,12 +120,17 @@ function snake_bodyPart(size, x, y)
       }
       return { x : this.getX(), y : this.getY() };
    };
-   this.moveLeft  = function() { return this.moveTo(this.getX() - 1, null); };
-   this.moveRight = function() { return this.moveTo(this.getX() + 1, null); };
-   this.moveUp    = function() { return this.moveTo(null, this.getY() - 1); };
-   this.moveDown  = function() { return this.moveTo(null, this.getY() + 1); };
-   this.getLastX  = function() { return this._last_x; };
-   this.getLastY  = function() { return this._last_y; };
+   
+   this.moveLeft       = function() { return this.moveTo(this.getX() - MOVE_WIDTH, null); };
+   this.moveRight      = function() { return this.moveTo(this.getX() + MOVE_WIDTH, null); };
+   this.moveUp         = function() { return this.moveTo(null, this.getY() - MOVE_WIDTH); };
+   this.moveDown       = function() { return this.moveTo(null, this.getY() + MOVE_WIDTH); };
+   this.lookAheadLeft  = function() { return this._lookAhead(this.getX() - MOVE_WIDTH, null); };
+   this.lookAheadRight = function() { return this._lookAhead(this.getX() + MOVE_WIDTH, null); };
+   this.lookAheadUp    = function() { return this._lookAhead(null, this.getY() - MOVE_WIDTH); };
+   this.lookAheadDown  = function() { return this._lookAhead(null, this.getY() + MOVE_WIDTH); };
+   this.getLastX       = function() { return this._last_x; };
+   this.getLastY       = function() { return this._last_y; };
    
    this.moveTo(this.getX(), this.getY());
 }
@@ -171,20 +189,19 @@ function snake_snake(part_size, start_length, start_x, start_y, tiles_cb, die_cb
          {
             switch (direction)
             {
-               case SNAKE_DIRECTIONS.UP   : position = this._parts[0].moveUp()   ; break;
-               case SNAKE_DIRECTIONS.DOWN : position = this._parts[0].moveDown() ; break;
-               case SNAKE_DIRECTIONS.LEFT : position = this._parts[0].moveLeft() ; break;
-               case SNAKE_DIRECTIONS.RIGHT: position = this._parts[0].moveRight(); break;
+               case SNAKE_DIRECTIONS.UP   : look_ahead_info = this._parts[0].lookAheadUp()   ; break;
+               case SNAKE_DIRECTIONS.DOWN : look_ahead_info = this._parts[0].lookAheadDown() ; break;
+               case SNAKE_DIRECTIONS.LEFT : look_ahead_info = this._parts[0].lookAheadLeft() ; break;
+               case SNAKE_DIRECTIONS.RIGHT: look_ahead_info = this._parts[0].lookAheadRight(); break;
 
-               default: position = null; break;
+               default: look_ahead_info = null; break;
             }
 
-            if (position !== null)
+            if (look_ahead_info !== null)
             {
-               this._refresh();
-               if (this._occupies(this._parts[0]._x, this._parts[0]._y, true) === null)
+               if (this._occupies(look_ahead_info.x, look_ahead_info.y, true) === null)
                {
-                  tiles = this._tiles_cb(position.x, position.y); /* request tiles at position from environment */
+                  tiles = this._tiles_cb(look_ahead_info.x, look_ahead_info.y); /* request tiles at position from environment */
 
                   for (i = 0; i < tiles.length; ++i)
                   {
@@ -204,6 +221,18 @@ function snake_snake(part_size, start_length, start_x, start_y, tiles_cb, die_cb
                            break;
                         }
                      }
+                  }
+                  
+                  if (this._dead !== true)
+                  {
+                     switch (direction)
+                     {
+                        case SNAKE_DIRECTIONS.UP   : this._parts[0].moveUp()   ; break;
+                        case SNAKE_DIRECTIONS.DOWN : this._parts[0].moveDown() ; break;
+                        case SNAKE_DIRECTIONS.LEFT : this._parts[0].moveLeft() ; break;
+                        case SNAKE_DIRECTIONS.RIGHT: this._parts[0].moveRight(); break;
+                     }
+                     this._refresh();
                   }
                }
                else {
