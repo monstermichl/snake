@@ -5,24 +5,30 @@
         <link rel="stylesheet" href="snake.css" />
         <script src="snake.js"></script>
         <script type="text/javascript">
-            snake = null;
+            SNAKE_NAMES =
+            {
+                snake_1 : 'huppie',
+                snake_2 : 'fluppie'
+            };
+            snake_game = null;
             
             function init()
             {
-                snake          = new snake_container('snakecontainer', 50, 50, 5, 75, scoreUpdate);
+                snake_game     = new snake_container('snakecontainer', 50, 50, 5, 75, scoreUpdate);
                 main_container = document.getElementById('maincontainer');
                 
                 window.onkeydown = keydown;
                 scoreUpdate(0);
                 
-                if (snake !== null)
+                if (snake_game !== null)
                 {
                     if (main_container !== null) /* update maincontainer size to fit snakecontainer */
                     {
-                        main_container.style.height = snake.getHeight() + 'px';
-                        main_container.style.width  = snake.getWidth()  + 'px';
+                        main_container.style.height = snake_game.getHeight() + 'px';
+                        main_container.style.width  = snake_game.getWidth()  + 'px';
                     }
-                    snake.start();
+                    snake_game.addSnake(SNAKE_NAMES.snake_1);
+                    snake_game.start();
                 }
             }
             
@@ -41,14 +47,14 @@
              * ------------------------------------------------------------------ */
             function keydown(event)
             {
-                if (snake !== null)
+                if (snake_game !== null)
                 {
                     switch(event.keyCode)
                     {
-                        case 38: snake.moveUp()   ; break; /* key up */
-                        case 40: snake.moveDown() ; break; /* key down */
-                        case 37: snake.moveLeft() ; break; /* key left */
-                        case 39: snake.moveRight(); break; /* key right */
+                        case 38: snake_game.moveUp   (SNAKE_NAMES.snake_1); break; /* key up */
+                        case 40: snake_game.moveDown (SNAKE_NAMES.snake_1); break; /* key down */
+                        case 37: snake_game.moveLeft (SNAKE_NAMES.snake_1); break; /* key left */
+                        case 39: snake_game.moveRight(SNAKE_NAMES.snake_1); break; /* key right */
                     }
                 }
             }

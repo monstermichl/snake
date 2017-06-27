@@ -308,13 +308,18 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
    {
       if ((start_length <= size_x) || (start_length <= size_y))
       {
+         SNAKE_KEYS =
+         {
+            SNAKE     : 'snake',
+            DIRECTION : 'direction'
+         };
+         
          this._start_length = start_length;
          this._tile_size    = 0;
          this._tiles        = [];
-         this._snake        = null;
+         this._snakes       = {};
          this._speed_ms     = speed_ms;
          this._score_cb     = score_cb;
-         this._direction    = SNAKE_DIRECTIONS.NONE;
          this._move_ticker  = null;
          this._food         = null;
          this._score        = 0;
@@ -322,8 +327,9 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
          this._container.style.position = 'relative';
          this._container.style.margin   = 'auto';
 
-         tile_size_x = this._container.offsetWidth  / size_x;
-         tile_size_y = this._container.offsetHeight / size_y;
+         tile_size_x      = this._container.offsetWidth  / size_x;
+         tile_size_y      = this._container.offsetHeight / size_y;
+         object_reference = this; /* refer to actual object (this) since _move is executed by the interval-method which changes the 'this'-context */
 
          if (tile_size_y < tile_size_x) {
             this._tile_size = tile_size_y;
@@ -332,11 +338,11 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
             this._tile_size = tile_size_x;
          }
          
-         this._updateSnakeNodes = function()
+         this._updateSnakeNodes = function(name)
          {
-            if (this._snake !== null)
+            if (this._snakeExists(name))
             {
-               nodes    = this._snake.getNodes();                                 /* retrieve actual snake DOM-nodes */
+               nodes    = this._snakes[name][SNAKE_KEYS.SNAKE].getNodes();        /* retrieve actual snake DOM-nodes */
                children = Array.prototype.slice.call(this._container.childNodes); /* convert nodelist to array to use indexOf (this is not done
                                                                                      each time in the for-loop since it would decrease performance
                                                                                      extensively after the snake is getting bigger) */
@@ -359,37 +365,45 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
             }
          };
          
-         object_reference = this; /* refer to actual object (this) since _move is executed by the interval-method which changes the 'this'-context */
+         this._snakeNames = function() {
+            return Object.keys(object_reference._snakes);
+         };
+         
          this._move = function()
          {
-            if (object_reference._snake !== null)
+            names = object_reference._snakeNames();
+            for (i = 0; i < names.length; ++i)
             {
-               consumed = [];
-               switch(object_reference._direction)
+               name = names[i];
+               if (object_reference._snakeExists(name))
                {
-                  case SNAKE_DIRECTIONS.UP   : consumed = object_reference._snake.moveUp()   ; break;
-                  case SNAKE_DIRECTIONS.DOWN : consumed = object_reference._snake.moveDown() ; break;
-                  case SNAKE_DIRECTIONS.LEFT : consumed = object_reference._snake.moveLeft() ; break;
-                  case SNAKE_DIRECTIONS.RIGHT: consumed = object_reference._snake.moveRight(); break;
-               }
-               
-               if (consumed.length > 0)
-               {
-                  object_reference._updateSnakeNodes();
-                  if (consumed.indexOf(object_reference._food) >= 0)
+                  consumed = [];
+                  switch(object_reference._snakes[name][SNAKE_KEYS.DIRECTION])
                   {
-                     object_reference._updateScore(object_reference._score + 1); /* increment score */
-                     object_reference.refreshFood();                             /* remove and update food */
+                     case SNAKE_DIRECTIONS.UP   : consumed = object_reference._snakes[name][SNAKE_KEYS.SNAKE].moveUp()   ; break;
+                     case SNAKE_DIRECTIONS.DOWN : consumed = object_reference._snakes[name][SNAKE_KEYS.SNAKE].moveDown() ; break;
+                     case SNAKE_DIRECTIONS.LEFT : consumed = object_reference._snakes[name][SNAKE_KEYS.SNAKE].moveLeft() ; break;
+                     case SNAKE_DIRECTIONS.RIGHT: consumed = object_reference._snakes[name][SNAKE_KEYS.SNAKE].moveRight(); break;
+                  }
+                  
+                  if (consumed.length > 0)
+                  {
+                     object_reference._updateSnakeNodes(name);
+                     if (consumed.indexOf(object_reference._food) >= 0)
+                     {
+                        object_reference._updateScore(object_reference._score + 1); /* increment score */
+                        object_reference.refreshFood();                             /* remove and update food */
+                     }
                   }
                }
             }
          };
          
-         this._snake_died = function() {
+         this._snakeDied = function() {
             object_reference.stop();
          };
          
-         this._tiles_at_pos = function(x, y, include_snake) /* this function shall return tiles and its deductions at a specific position */
+         this._tilesAtPos = function(x, y, include_snake) /* this function shall return tiles and its deductions at a specific position */
          {
             tiles = [];
             
@@ -410,21 +424,26 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
                }
             }
             
-            if ((include_snake === true) && (this._snake !== null))
+            if (include_snake === true)
             {
-               occupied_by = this._snake.occupies(x, y);
-               
-               if (occupied_by !== null) {
-                  tiles.push(occupied_by);
+               names = this._snakeNames();
+               for (i = 0; i < names.length; ++i)
+               {
+                  name        = names[i];
+                  occupied_by = object_reference._snakes[name][SNAKE_KEYS.SNAKE].occupies(x, y);
+                  
+                  if (occupied_by !== null) {
+                     tiles.push(occupied_by);
+                  }
                }
             }
             return tiles;
          };
          
-         this._tile_at_pos = function(type, x, y, include_snake)
+         this._tileAtPos = function(type, x, y, include_snake)
          {
             contains = false;
-            tiles    = this._tiles_at_pos(x, y, include_snake);
+            tiles    = this._tilesAtPos(x, y, include_snake);
             
             for (i = 0; (i < tiles.length) && (contains === false); ++i)
             {
@@ -439,20 +458,43 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
             return contains;
          };
          
-         this.moveUp = function() {
-            this._direction = SNAKE_DIRECTIONS.UP;
+         this._snakeExists = function(name) {
+            return (object_reference._snakes[name] !== undefined);
          };
          
-         this.moveDown = function() {
-            this._direction = SNAKE_DIRECTIONS.DOWN;
+         this._snakeSetDirection = function(name, direction)
+         {
+            if (this._snakeExists(name)) {
+               this._snakes[name][SNAKE_KEYS.DIRECTION] = direction;
+            }
          };
          
-         this.moveLeft = function() {
-            this._direction = SNAKE_DIRECTIONS.LEFT;
+         this.addSnake = function(name)
+         {
+            if (this._snakeExists(name) !== true)
+            {
+               this._snakes[name] = {};
+               this._snakes[name][SNAKE_KEYS.SNAKE    ] = new snake_snake(this._tile_size, this._start_length, size_x / 2, size_y / 2, this._tilesAtPos, this._snakeDied); /* positions may be replaced by random directions */
+               this._snakes[name][SNAKE_KEYS.DIRECTION] = SNAKE_DIRECTIONS.NONE;
+               
+               this._updateSnakeNodes(name);
+            }
          };
          
-         this.moveRight = function() {
-            this._direction = SNAKE_DIRECTIONS.RIGHT;
+         this.moveUp = function(name) {
+            this._snakeSetDirection(name, SNAKE_DIRECTIONS.UP);
+         };
+         
+         this.moveDown = function(name) {
+            this._snakeSetDirection(name, SNAKE_DIRECTIONS.DOWN);
+         };
+         
+         this.moveLeft = function(name) {
+            this._snakeSetDirection(name, SNAKE_DIRECTIONS.LEFT);
+         };
+         
+         this.moveRight = function(name) {
+            this._snakeSetDirection(name, SNAKE_DIRECTIONS.RIGHT);
          };
          
          this.start = function()
@@ -500,20 +542,6 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
             }
          };
          
-         this.refreshSnake = function()
-         {
-            if (this._snake !== null)
-            {
-               nodes = this._snake.getNodes();
-               for (i = 0; i < nodes.length; ++i) {
-                  this._container.removeChild(nodes[i]);
-               }
-               this._snake = null;
-            }
-            this._snake = new snake_snake(this._tile_size, this._start_length, size_x / 2, size_y / 2, this._tiles_at_pos, this._snake_died); /* positions may be replaced by random directions */
-            this._updateSnakeNodes();
-         };
-         
          this.refreshFood = function()
          {
             if (this._food !== null) {
@@ -527,7 +555,7 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
                random_x = -1;
                random_y = -1;
 
-               while ((object_reference._tile_at_pos(snake_tile, random_x, random_y, true) === false) && (timeout <= 500))
+               while ((object_reference._tileAtPos(snake_tile, random_x, random_y, true) === false) && (timeout <= 500))
                {
                   random_x = Math.floor(Math.random() * size_x);
                   random_y = Math.floor(Math.random() * size_y);
@@ -548,7 +576,6 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
          
          /* refresh everything */
          this.refreshTiles();
-         this.refreshSnake();
          this.refreshFood();
       }
    }
