@@ -269,6 +269,26 @@ function snake_snake(part_size, start_length, start_x, start_y, tiles_cb, die_cb
          return this._parts;
       };
       
+      this.getFirstPart = function()
+      {
+         first_part = null;
+         if (this._parts.length > 0) {
+            first_part = this._parts[0];
+         }
+         return first_part;
+      };
+      
+      this.getLastPart = function()
+      {
+         first_part = null;
+         length     = this._parts.length;
+         
+         if (length > 0) {
+            first_part = this._parts[length - 1];
+         }
+         return first_part;
+      };
+      
       this.getNodes = function()
       {
          nodes = [];
@@ -295,8 +315,73 @@ function snake_snake(part_size, start_length, start_x, start_y, tiles_cb, die_cb
          return this._refreshPosition(SNAKE_DIRECTIONS.DOWN); /* just move head, body is following head when 'refresh' is called */
       };
       
-      for (i = 0; i < start_length; ++i) {
-         this._parts[i] = new snake_bodyPart(this._part_size, start_x - i, start_y);
+      /* init parts */
+      grow_direction      = SNAKE_DIRECTIONS.LEFT;
+      last_target_x       = start_x;
+      last_target_y       = start_y;
+      get_target_position = function(direction)
+      {
+         position = { x : last_target_x, y : last_target_y };
+         
+         switch (direction)
+         {
+            case SNAKE_DIRECTIONS.LEFT:
+            {
+               position.x = last_target_x - 1;
+               position.y = last_target_y;
+               break;
+            }
+            case SNAKE_DIRECTIONS.RIGHT:
+            {
+               position.x = last_target_x + 1;
+               position.y = last_target_y;
+               break;
+            }
+            case SNAKE_DIRECTIONS.UP:
+            {
+               position.x = last_target_x;
+               position.y = last_target_y - 1;
+               break;
+            }
+            case SNAKE_DIRECTIONS.DOWN:
+            {
+               position.x = last_target_x;
+               position.y = last_target_y + 1;
+               break;
+            }
+         }
+         return position;
+      };
+      
+      for (j = 0; j < start_length; ++j)
+      {
+         found_position = false;
+         attempt_index  = 0;
+         directions     = [SNAKE_DIRECTIONS.LEFT, SNAKE_DIRECTIONS.UP, SNAKE_DIRECTIONS.DOWN, SNAKE_DIRECTIONS.RIGHT];
+         
+         while ((attempt_index < directions.length) && (found_position !== true))
+         {
+            position          = get_target_position(directions[attempt_index]);
+            tiles_at_position = this._tiles_cb(position.x, position.y, true);
+            
+            if ((tiles_at_position.length === 0) || ((tiles_at_position.length === 1) && (tiles_at_position[0].constructor === snake_tile))) {
+               found_position = true; /* found free spot */
+            }
+            else {
+               attempt_index++; /* try next direction */
+            }
+         }
+         
+         if (found_position === true)
+         {
+            this._parts[j] = new snake_bodyPart(this._part_size, position.x, position.y);
+            
+            last_target_x = position.x;
+            last_target_y = position.y;
+         }
+         else {
+            break; /* cancel if no free position found */
+         }
       }
    }
 }
@@ -426,14 +511,17 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
             
             if (include_snake === true)
             {
-               names = this._snakeNames();
+               names = object_reference._snakeNames();
                for (i = 0; i < names.length; ++i)
                {
-                  name        = names[i];
-                  occupied_by = object_reference._snakes[name][SNAKE_KEYS.SNAKE].occupies(x, y);
-                  
-                  if (occupied_by !== null) {
-                     tiles.push(occupied_by);
+                  name = names[i];
+                  if (object_reference._snakeExists(name))
+                  {
+                     occupied_by = object_reference._snakes[name][SNAKE_KEYS.SNAKE].occupies(x, y);
+                     
+                     if (occupied_by !== null) {
+                        tiles.push(occupied_by);
+                     }
                   }
                }
             }
@@ -458,8 +546,58 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
             return contains;
          };
          
-         this._snakeExists = function(name) {
-            return (object_reference._snakes[name] !== undefined);
+         this._freePlace = function(x, y, exceptions)
+         {
+            exception = false;
+            if (exceptions instanceof Array)
+            {
+               for (i = 0; i < exceptions.length; ++i)
+               {
+                  if ((exceptions.x !== undefined) && (exceptions.x === x))
+                  {
+                     if ((exceptions.y !== undefined) && (exceptions.y === y))
+                     {
+                        exception = true;
+                        break;
+                     }
+                  }
+               }
+               return exception;
+            }
+            return ((object_reference._tileAtPos(snake_tile, x, y, true) === true) && (exception === false));
+         };
+         
+         this._randomFreePlace = function(exceptions)
+         {
+            timeout    =  0;
+            random_x   = -1;
+            random_y   = -1;
+            free_place = null;
+
+            while ((this._freePlace(random_x, random_y, exceptions) === false) && (timeout <= 500))
+            {
+               random_x = Math.floor(Math.random() * size_x);
+               random_y = Math.floor(Math.random() * size_y);
+
+               timeout++;
+            }
+            
+            if (this._freePlace(random_x, random_y)) {
+               free_place = { x : random_x, y : random_y };
+            }
+            return free_place;
+         };
+         
+         this._snakeExists = function(name)
+         {
+            exists = false;
+            if (object_reference._snakes[name] !== undefined)
+            {
+               if ((object_reference._snakes[name][SNAKE_KEYS.DIRECTION] !== undefined) && (object_reference._snakes[name][SNAKE_KEYS.SNAKE] !== undefined)) {
+                  exists = true;
+               }
+            }
+            return exists;
          };
          
          this._snakeSetDirection = function(name, direction)
@@ -473,11 +611,16 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
          {
             if (this._snakeExists(name) !== true)
             {
-               this._snakes[name] = {};
-               this._snakes[name][SNAKE_KEYS.SNAKE    ] = new snake_snake(this._tile_size, this._start_length, size_x / 2, size_y / 2, this._tilesAtPos, this._snakeDied); /* positions may be replaced by random directions */
-               this._snakes[name][SNAKE_KEYS.DIRECTION] = SNAKE_DIRECTIONS.NONE;
+               free_place = this._randomFreePlace();
                
-               this._updateSnakeNodes(name);
+               if (free_place !== null)
+               {
+                  this._snakes[name] = {};
+                  this._snakes[name][SNAKE_KEYS.SNAKE    ] = new snake_snake(this._tile_size, this._start_length, free_place.x, free_place.y, this._tilesAtPos, this._snakeDied); /* positions may be replaced by random directions */
+                  this._snakes[name][SNAKE_KEYS.DIRECTION] = SNAKE_DIRECTIONS.NONE;
+                  
+                  this._updateSnakeNodes(name);
+               }
             }
          };
          
@@ -548,23 +691,15 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
                this._container.removeChild(this._food.getNode());
             }
             
-            object_reference = this;
             setTimeout(function() /* start seperate 'thread', since generating new food position may take some time */
             {
-               timeout  =  0;
-               random_x = -1;
-               random_y = -1;
+               free_place = object_reference._randomFreePlace();
 
-               while ((object_reference._tileAtPos(snake_tile, random_x, random_y, true) === false) && (timeout <= 500))
+               if (free_place !== null)
                {
-                  random_x = Math.floor(Math.random() * size_x);
-                  random_y = Math.floor(Math.random() * size_y);
-
-                  timeout++;
+                  object_reference._food = new snake_food(object_reference._tile_size, free_place.x, free_place.y); /* food test */
+                  object_reference._container.appendChild(object_reference._food.getNode());
                }
-
-               object_reference._food = new snake_food(object_reference._tile_size, random_x, random_y); /* food test */
-               object_reference._container.appendChild(object_reference._food.getNode());
             }, 0);
          };
          
