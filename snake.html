@@ -5,16 +5,19 @@
         <link rel="stylesheet" href="snake.css" />
         <script src="snake.js"></script>
         <script type="text/javascript">
-            SNAKE_NAMES =
+            SNAKE_LENGTH    = 7;
+            SNAKE_GAME_SIZE = 50;
+            SNAKE_SPEED     = 50;
+            SNAKE_NAMES     =
             {
-                snake_1 : 'huppie',
-                snake_2 : 'fluppie'
+                SNAKE_1 : 'huppie',
+                SNAKE_2 : 'fluppie'
             };
             snake_game = null;
             
             function init()
             {
-                snake_game     = new snake_container('snakecontainer', 50, 50, 5, 75, scoreUpdate);
+                snake_game     = new snake_container('snakecontainer', SNAKE_GAME_SIZE, SNAKE_GAME_SIZE, SNAKE_LENGTH, SNAKE_SPEED, scoreUpdate);
                 main_container = document.getElementById('maincontainer');
                 
                 window.onkeydown = keydown;
@@ -27,14 +30,30 @@
                         main_container.style.height = snake_game.getHeight() + 'px';
                         main_container.style.width  = snake_game.getWidth()  + 'px';
                     }
-                    snake_game.addSnake(SNAKE_NAMES.snake_1);
+                    snake_game.addSnake(SNAKE_NAMES.SNAKE_1);
                     snake_game.start();
                 }
             }
             
-            function scoreUpdate(score)
+            function addPlayer()
             {
-                score_display = document.getElementById('snakescore');
+                if ((snake_game !== null) && (snake_game.snakeExists(SNAKE_NAMES.SNAKE_2) !== true))
+                {
+                    snake_game.addSnake(SNAKE_NAMES.SNAKE_2);
+                    scoreUpdate(0);
+                }
+            }
+            
+            function scoreUpdate(name, score)
+            {
+                id = '';
+                
+                switch (name)
+                {
+                    case SNAKE_NAMES.SNAKE_1: id = 'snakescore' ; break;
+                    case SNAKE_NAMES.SNAKE_2: id = 'snakescore2'; break;
+                }
+                score_display = document.getElementById(id);
                 
                 if (score_display !== null) {
                     score_display.innerHTML = 'Score: ' + score;
@@ -51,10 +70,17 @@
                 {
                     switch(event.keyCode)
                     {
-                        case 38: snake_game.moveUp   (SNAKE_NAMES.snake_1); break; /* key up */
-                        case 40: snake_game.moveDown (SNAKE_NAMES.snake_1); break; /* key down */
-                        case 37: snake_game.moveLeft (SNAKE_NAMES.snake_1); break; /* key left */
-                        case 39: snake_game.moveRight(SNAKE_NAMES.snake_1); break; /* key right */
+                        /* snake 1 */
+                        case 38: snake_game.moveUp   (SNAKE_NAMES.SNAKE_1); break; /* key up */
+                        case 40: snake_game.moveDown (SNAKE_NAMES.SNAKE_1); break; /* key down */
+                        case 37: snake_game.moveLeft (SNAKE_NAMES.SNAKE_1); break; /* key left */
+                        case 39: snake_game.moveRight(SNAKE_NAMES.SNAKE_1); break; /* key right */
+                            
+                        /* snake 2 */
+                        case 87: snake_game.moveUp   (SNAKE_NAMES.SNAKE_2); break; /* w */
+                        case 83: snake_game.moveDown (SNAKE_NAMES.SNAKE_2); break; /* s */
+                        case 65: snake_game.moveLeft (SNAKE_NAMES.SNAKE_2); break; /* a */
+                        case 68: snake_game.moveRight(SNAKE_NAMES.SNAKE_2); break; /* d */
                     }
                 }
             }
@@ -65,7 +91,10 @@
             <div id="snakecontainer">
 
             </div>
-            <div id="snakescore"></div>
+            <div id="snakescorecontainer">
+                <div id="snakescore"></div>
+                <div id="snakescore2" onclick="addPlayer();">add player</div>
+            </div>
         </div>
     </body>
 </html>
