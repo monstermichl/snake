@@ -144,6 +144,7 @@ function snake_snake(part_size, start_length, start_x, start_y, tiles_cb, die_cb
       this._tiles_cb  = tiles_cb;
       this._die_cb    = die_cb;
       this._dead      = false;
+      this._name      = '';
       
       if (grow_by > 0) {
          this._grow_by = grow_by;
@@ -260,7 +261,15 @@ function snake_snake(part_size, start_length, start_x, start_y, tiles_cb, die_cb
       this.occupies = function(x, y) {
          return this._occupies(x, y, false);
       };
-            
+      
+      this.setName = function(name) {
+         this._name = name;
+      };
+      
+      this.getName = function() {
+         return this._name;
+      };
+      
       this.reanimate = function() {
          this._dead = false;
       };
@@ -353,7 +362,7 @@ function snake_snake(part_size, start_length, start_x, start_y, tiles_cb, die_cb
          return position;
       };
       
-      for (j = 0; j < start_length; ++j)
+      for (create_snake_j = 0; create_snake_j < start_length; ++create_snake_j)
       {
          found_position = false;
          attempt_index  = 0;
@@ -378,7 +387,7 @@ function snake_snake(part_size, start_length, start_x, start_y, tiles_cb, die_cb
          
          if (found_position === true)
          {
-            this._parts[j] = new snake_bodyPart(this._part_size, position.x, position.y);
+            this._parts[create_snake_j] = new snake_bodyPart(this._part_size, position.x, position.y);
             
             last_target_x = position.x;
             last_target_y = position.y;
@@ -468,11 +477,13 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
             names = object_reference._snakeNames();
             for (move_i = 0; move_i < names.length; ++move_i)
             {
-               snake = object_reference._snakeGetObject(names[move_i]);
+               name  = names[move_i];
+               snake = object_reference._snakeGetObject(name);
+               
                if (snake !== null)
                {
                   consumed = [];
-                  switch(object_reference._snakeGetDirection(names[move_i]))
+                  switch(object_reference._snakeGetDirection(name))
                   {
                      case SNAKE_DIRECTIONS.UP   : consumed = snake.moveUp   (); break;
                      case SNAKE_DIRECTIONS.DOWN : consumed = snake.moveDown (); break;
@@ -485,8 +496,8 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
                      object_reference._updateSnakeNodes(name);
                      if (consumed.indexOf(object_reference._food) >= 0)
                      {
-                        object_reference._updateScore(name, object_reference._snakeGetScore(names[move_i]) + 1); /* increment score */
-                        object_reference.refreshFood();                                                          /* remove and update food */
+                        object_reference._updateScore(name, object_reference._snakeGetScore(name) + 1); /* increment score */
+                        object_reference.refreshFood();                                                 /* remove and update food */
                      }
                   }
                }
@@ -675,6 +686,8 @@ function snake_container(div_id, size_x, size_y, start_length, speed_ms, score_c
                   this._snakes[name][SNAKE_KEYS.SNAKE    ] = new snake_snake(this._tile_size, this._start_length, free_place.x, free_place.y, this._tilesAtPos, this._snakeDied); /* positions may be replaced by random directions */
                   this._snakes[name][SNAKE_KEYS.DIRECTION] = SNAKE_DIRECTIONS.NONE;
                   this._snakes[name][SNAKE_KEYS.SCORE    ] = 0;
+                  
+                  this._snakes[name][SNAKE_KEYS.SNAKE].setName(name);
                   
                   this._updateSnakeNodes(name);
                   this._updateScore(name, 0); /* reset score */
